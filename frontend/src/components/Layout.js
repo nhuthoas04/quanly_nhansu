@@ -44,6 +44,7 @@ const managerNavigation = [
 const employeeNavigation = [
   { name: 'Check In/Out', href: '/my-attendance', icon: FingerPrintIcon },
   { name: 'Lịch sử chấm công', href: '/my-history', icon: ClipboardDocumentListIcon },
+  { name: 'Đơn xin nghỉ', href: '/my-leaves', icon: CalendarDaysIcon },
   { name: 'Trang cá nhân', href: '/profile', icon: UserCircleIcon },
 ];
 

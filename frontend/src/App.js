@@ -17,6 +17,9 @@ import EmployeeDashboard from './pages/EmployeeDashboard';
 // Employee Self-Service Pages
 import AttendanceHistory from './pages/Employee/AttendanceHistory';
 import Profile from './pages/Employee/Profile';
+import MyLeaveRequests from './pages/Employee/MyLeaveRequests';
+import MyLeaveRequestForm from './pages/Employee/MyLeaveRequestForm';
+import MyLeaveRequestEdit from './pages/Employee/MyLeaveRequestEdit';
 
 // Employee Pages
 import EmployeeList from './pages/Employees/EmployeeList';
@@ -64,6 +67,9 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="my-attendance" element={<EmployeeDashboard />} />
               <Route path="my-history" element={<AttendanceHistory />} />
+              <Route path="my-leaves" element={<MyLeaveRequests />} />
+              <Route path="my-leaves/new" element={<MyLeaveRequestForm />} />
+              <Route path="my-leaves/:id/edit" element={<MyLeaveRequestEdit />} />
               <Route path="profile" element={<Profile />} />
 
               {/* Users (Admin only) */}

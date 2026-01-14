@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { PlusIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '../../context/AuthContext';
 
 const LeaveList = () => {
+  const { user } = useAuth();
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -13,17 +15,6 @@ const LeaveList = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
-
-  const handleDeleteLeave = async () => {
-    try {
-      await api.delete(`/leaves/${deleteId}`);
-      toast.success('Xóa đơn nghỉ phép thành công');
-      setShowDeleteModal(false);
-      fetchLeaves();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Xóa đơn nghỉ phép thất bại');
-    }
-  };
 
   // Get current month and year
   const currentDate = new Date();
@@ -36,11 +27,7 @@ const LeaveList = () => {
   const [filterMonth, setFilterMonth] = useState(currentMonth);
   const [filterYear, setFilterYear] = useState(currentYear);
 
-  useEffect(() => {
-    fetchLeaves();
-  }, [filterType, filterStatus, filterMonth, filterYear]);
-
-  const fetchLeaves = async () => {
+  const fetchLeaves = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get('/leaves', {
@@ -56,6 +43,21 @@ const LeaveList = () => {
       toast.error('Không thể tải danh sách nghỉ phép');
     } finally {
       setLoading(false);
+    }
+  }, [filterType, filterStatus, filterMonth, filterYear]);
+
+  useEffect(() => {
+    fetchLeaves();
+  }, [fetchLeaves]);
+
+  const handleDeleteLeave = async () => {
+    try {
+      await api.delete(`/leaves/${deleteId}`);
+      toast.success('Xóa đơn nghỉ phép thành công');
+      setShowDeleteModal(false);
+      fetchLeaves();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Xóa đơn nghỉ phép thất bại');
     }
   };
 
@@ -224,7 +226,9 @@ const LeaveList = () => {
                       </>
                     )}
                     <Link to={`/leaves/${leave._id}`} className="text-indigo-600 hover:text-indigo-900">Xem</Link>
-                    <button onClick={() => { setDeleteId(leave._id); setShowDeleteModal(true); }} className="text-red-600 hover:text-red-900">Xóa</button>
+                    {user?.role === 'admin' && (
+                      <button onClick={() => { setDeleteId(leave._id); setShowDeleteModal(true); }} className="text-red-600 hover:text-red-900">Xóa</button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -269,8 +273,8 @@ const LeaveList = () => {
                   type="button"
                   onClick={confirmAction}
                   className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm ${modalType === 'approve'
-                      ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
-                      : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                    ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+                    : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
                     }`}
                 >
                   {modalType === 'approve' ? 'Duyệt' : 'Từ chối'}

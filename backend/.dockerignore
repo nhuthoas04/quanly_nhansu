@@ -1,0 +1,52 @@
+# Dependencies
+node_modules
+npm-debug.log
+package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Testing
+coverage
+.nyc_output
+
+# Build
+dist
+build
+
+# Uploads (keep structure but not files)
+uploads/*
+!uploads/.gitkeep
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts
+*.sh
+createAdmin.js
+createUser.js
+createUsersForEmployees.js
+checkUsers.js
+removeHrRole.js
+resetAdmin.js
+syncUserRoles.js
+testAllUsers.js
+testLogin.js
+
+# Documentation
+README.md
+*.md

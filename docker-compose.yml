@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # Backend API - Connected to Local MongoDB
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hrm-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      # Connect to MongoDB running on Windows host machine
+      MONGODB_URI: mongodb://host.docker.internal:27017/hr_management
+      JWT_SECRET: hr_management_secret_key_2024
+      JWT_EXPIRE: 7d
+    networks:
+      - hrm-network
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/auth/login" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend React App (Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hrm-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    networks:
+      - hrm-network
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  hrm-network:
+    driver: bridge
+
+# Note: MongoDB service removed - using local MongoDB on host machine instead
+# Make sure MongoDB is running on Windows at localhost:27017

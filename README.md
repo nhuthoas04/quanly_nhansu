@@ -1,129 +1,57 @@
-# Hệ Thống Quản Lý Nhân Sự (HR Management System)
+# Hướng Dẫn Chạy Đồ Án Quản Lý Nhân Sự (Docker Version)
 
-Ứng dụng web quản lý nhân sự được xây dựng với MERN Stack (MongoDB, Express.js, React, Node.js).
+Dự án này đã được cấu hình để chạy trên Docker, kết nối trực tiếp với MongoDB có sẵn trên máy (Localhost).
 
----
+## � Cài Đặt Từ GitHub
 
-## 📋 Yêu Cầu Hệ Thống
+Nếu bạn vừa tải source code này về từ GitHub, hãy làm theo các bước sau:
 
-- **Node.js**: Phiên bản 16.x trở lên ([Tải Node.js](https://nodejs.org/))
-- **MongoDB**: Phiên bản 6.x trở lên
-- **npm**: Đi kèm với Node.js
-
----
-
-## 🗄️ Cài Đặt MongoDB
-
-### Cách 1: Cài đặt MongoDB cục bộ (Local)
-
-1. **Tải MongoDB Community Server** tại: https://www.mongodb.com/try/download/community
-
-2. **Cài đặt** theo hướng dẫn, chọn "Complete" installation
-
-3. **Khởi động MongoDB Service**:
-   - MongoDB sẽ tự động chạy như Windows Service
-   - Hoặc chạy thủ công: `mongod`
-
-4. **Kiểm tra kết nối**:
+1. **Clone repository:**
    ```bash
-   mongosh
+   git clone <link-github-cua-ban>
+   cd quanlinhansu_web
    ```
 
-### Cách 2: Sử dụng MongoDB Atlas (Cloud)
+   > **Lưu ý:** Bạn **KHÔNG** cần chạy lệnh `npm install`. Docker sẽ tự động cài đặt các thư viện cần thiết bên trong container.
 
-1. Truy cập https://www.mongodb.com/cloud/atlas
+2. **Kiểm tra file cấu hình:**
+   - Đảm bảo file `docker-compose.yml`, `frontend/Dockerfile`, `backend/Dockerfile` đã có sẵn.
 
-2. Đăng ký tài khoản miễn phí và tạo cluster
+## �🛠 Yêu Cầu
+1. **Docker Desktop** đã được cài đặt và đang chạy.
+2. **MongoDB** đang chạy trên máy của bạn (Localhost:27017).
 
-3. Tạo Database User và lấy Connection String
+## 🚀 Cách Chạy
 
-4. Connection String có dạng:
-   ```
-   mongodb+srv://<username>:<password>@cluster.xxxxx.mongodb.net/<database>?retryWrites=true&w=majority
-   ```
-
----
-
-## ⚙️ Cấu Hình Kết Nối MongoDB
-
-### Tạo file cấu hình Backend
-
-1. Vào thư mục `backend`:
-   ```bash
-   cd backend
-   ```
-
-2. Tạo file `.env` với nội dung sau:
-
-   **Với MongoDB Local:**
-   ```env
-   PORT=5000
-   MONGODB_URI=mongodb://localhost:27017/hr_management
-   JWT_SECRET=your_jwt_secret_key_here
-   JWT_EXPIRE=24h
-   ```
-
-   **Với MongoDB Atlas:**
-   ```env
-   PORT=5000
-   MONGODB_URI=mongodb+srv://<username>:<password>@cluster.xxxxx.mongodb.net/hr_management?retryWrites=true&w=majority
-   JWT_SECRET=your_jwt_secret_key_here
-   JWT_EXPIRE=24h
-   ```
-
-> ⚠️ **Lưu ý**: Thay `<username>`, `<password>` bằng thông tin thực của bạn.
-
----
-
-## 🚀 Chạy Ứng Dụng
-
-### Bước 1: Cài đặt dependencies
-
-Mở **2 terminal** riêng biệt:
-
-**Terminal 1 - Backend:**
-```bash
-cd backend
-npm install
-```
-
-**Terminal 2 - Frontend:**
-```bash
-cd frontend
-npm install
-```
-
-### Bước 2: Chạy Backend Server
+1. Mở terminal tại thư mục gốc của dự án.
+2. Chạy lệnh sau để build và khởi động:
 
 ```bash
-cd backend
-npm run dev
+docker-compose up -d --build
 ```
 
-✅ Backend sẽ chạy tại: http://localhost:5000
+- `-d`: Chạy ngầm (background).
+- `--build`: Build lại nếu có thay đổi code.
 
-### Bước 3: Chạy Frontend
+## 🌐 Truy Cập
 
+Sau khi khởi động thành công:
+- **Web App (Frontend)**: [http://localhost:3000](http://localhost:3000)
+- **API Server (Backend)**: [http://localhost:5000](http://localhost:5000)
+- **Database**: Sử dụng MongoDB local tại `localhost:27017`.
+
+## 📦 Quản Lý
+
+**Xem logs (khi có lỗi):**
 ```bash
-cd frontend
-npm start
+docker-compose logs -f
 ```
 
-✅ Frontend sẽ chạy tại: http://localhost:3000
-
----
-
-## 👤 Tạo Tài Khoản Admin
-
-Chạy lệnh sau trong thư mục `backend`:
-
+**Dừng chương trình:**
 ```bash
-cd backend
-npm run create-admin
+docker-compose down
 ```
 
-**Tài khoản mặc định:**
-- Username: `admin`
-- Password: `admin123`
-
-
+## ⚠️ Lưu Ý Quan Trọng
+- **Dữ liệu**: Docker connect trực tiếp vào MongoDB trên máy bạn qua `host.docker.internal`. Dữ liệu sẽ được giữ nguyên như khi chạy code thường.
+- **Cổng (Ports)**: Đảm bảo port `3000` và `5000` không bị chiếm dụng bởi chương trình khác (ví dụ: tắt `npm start` nếu đang chạy).
