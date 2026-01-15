@@ -20,7 +20,9 @@ const COLLECTIONS = [
     'contracts',
     'salaries',
     'leaves',
-    'attendances'
+    'attendances',
+    'permissions',
+    'roles'
 ];
 
 async function migrateData(atlasPassword) {
