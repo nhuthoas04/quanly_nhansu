@@ -1,10 +1,8 @@
-# Hướng Dẫn Chạy Đồ Án Quản Lý Nhân Sự (Docker Version)
+# Hướng Dẫn Chạy Đồ Án Quản Lý Nhân Sự
 
-Dự án này đã được cấu hình để chạy trên Docker, kết nối trực tiếp với MongoDB có sẵn trên máy (Localhost).
+Dự án này sử dụng **MongoDB Atlas** (Cloud Database), bạn **KHÔNG cần cài MongoDB** trên máy.
 
-## � Cài Đặt Từ GitHub
-
-Nếu bạn vừa tải source code này về từ GitHub, hãy làm theo các bước sau:
+## 📦 Cài Đặt Từ GitHub
 
 1. **Clone repository:**
    ```bash
@@ -12,46 +10,72 @@ Nếu bạn vừa tải source code này về từ GitHub, hãy làm theo các b
    cd quanlinhansu_web
    ```
 
-   > **Lưu ý:** Bạn **KHÔNG** cần chạy lệnh `npm install`. Docker sẽ tự động cài đặt các thư viện cần thiết bên trong container.
+2. **Cấu hình Backend:**
+   ```bash
+   cd backend
+   copy .env.example .env
+   ```
+   
+   Mở file `.env` và thay `YOUR_PASSWORD` bằng password MongoDB Atlas thật.
 
-2. **Kiểm tra file cấu hình:**
-   - Đảm bảo file `docker-compose.yml`, `frontend/Dockerfile`, `backend/Dockerfile` đã có sẵn.
+3. **Cài đặt dependencies:**
+   ```bash
+   # Backend
+   cd backend
+   npm install
 
-## �🛠 Yêu Cầu
-1. **Docker Desktop** đã được cài đặt và đang chạy.
-2. **MongoDB** đang chạy trên máy của bạn (Localhost:27017).
+   # Frontend  
+   cd ../frontend
+   npm install
+   ```
 
-## 🚀 Cách Chạy
+## � Cách Chạy (Không dùng Docker)
 
-1. Mở terminal tại thư mục gốc của dự án.
-2. Chạy lệnh sau để build và khởi động:
+**Chạy Backend:**
+```bash
+cd backend
+npm start
+```
 
+**Chạy Frontend (terminal mới):**
+```bash
+cd frontend
+npm start
+```
+
+## � Cách Chạy (Docker)
+
+Nếu muốn dùng Docker:
 ```bash
 docker-compose up -d --build
 ```
 
-- `-d`: Chạy ngầm (background).
-- `--build`: Build lại nếu có thay đổi code.
+> **Lưu ý:** Bạn **KHÔNG** cần chạy `npm install` khi dùng Docker.
 
 ## 🌐 Truy Cập
 
-Sau khi khởi động thành công:
-- **Web App (Frontend)**: [http://localhost:3000](http://localhost:3000)
-- **API Server (Backend)**: [http://localhost:5000](http://localhost:5000)
-- **Database**: Sử dụng MongoDB local tại `localhost:27017`.
+- **Web App**: [http://localhost:3000](http://localhost:3000)
+- **API Server**: [http://localhost:5000](http://localhost:5000)
+- **Database**: MongoDB Atlas (Cloud)
 
-## 📦 Quản Lý
+## � Tài Khoản Mặc Định
 
-**Xem logs (khi có lỗi):**
+| Role | Username | Password |
+|------|----------|----------|
+| Admin | admin | admin123 |
+
+## ⚠️ Lưu Ý
+
+- **MongoDB Atlas**: Dữ liệu được lưu trữ trên cloud, bạn không cần cài MongoDB local.
+- **Network**: Đảm bảo máy có kết nối internet để connect tới Atlas.
+- **Ports**: Đảm bảo port `3000` và `5000` không bị chiếm.
+
+## 📦 Quản Lý Docker
+
 ```bash
+# Xem logs
 docker-compose logs -f
-```
 
-**Dừng chương trình:**
-```bash
+# Dừng chương trình
 docker-compose down
 ```
-
-## ⚠️ Lưu Ý Quan Trọng
-- **Dữ liệu**: Docker connect trực tiếp vào MongoDB trên máy bạn qua `host.docker.internal`. Dữ liệu sẽ được giữ nguyên như khi chạy code thường.
-- **Cổng (Ports)**: Đảm bảo port `3000` và `5000` không bị chiếm dụng bởi chương trình khác (ví dụ: tắt `npm start` nếu đang chạy).

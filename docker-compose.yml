@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Backend API - Connected to Local MongoDB
+  # Backend API - Connected to MongoDB Atlas
   backend:
     build:
       context: ./backend
@@ -10,13 +10,8 @@ services:
     restart: unless-stopped
     ports:
       - "5000:5000"
-    environment:
-      NODE_ENV: production
-      PORT: 5000
-      # Connect to MongoDB running on Windows host machine
-      MONGODB_URI: mongodb://host.docker.internal:27017/hr_management
-      JWT_SECRET: hr_management_secret_key_2024
-      JWT_EXPIRE: 7d
+    env_file:
+      - ./backend/.env
     networks:
       - hrm-network
     healthcheck:
@@ -47,5 +42,5 @@ networks:
   hrm-network:
     driver: bridge
 
-# Note: MongoDB service removed - using local MongoDB on host machine instead
-# Make sure MongoDB is running on Windows at localhost:27017
+# Note: Using MongoDB Atlas (Cloud) - no need to install MongoDB locally
+# Backend reads connection string from .env file
