@@ -1,7 +1,58 @@
 const express = require('express');
 const router = express.Router();
 const Salary = require('../models/Salary');
+const Employee = require('../models/Employee');
+const Attendance = require('../models/Attendance');
 const { protect, authorize } = require('../middleware/auth');
+
+// @route   GET /api/salaries/calculate-info
+// @desc    Get salary calculation info (working days from attendance and position salary)
+// @access  Private/Admin
+router.get('/calculate-info', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { employee, month, year } = req.query;
+
+    if (!employee || !month || !year) {
+      return res.status(400).json({ message: 'Vui lòng cung cấp employee, month, year' });
+    }
+
+    // Get employee with position info
+    const emp = await Employee.findById(employee).populate('position');
+    if (!emp) {
+      return res.status(404).json({ message: 'Không tìm thấy nhân viên' });
+    }
+
+    // Get position salary
+    const positionSalary = emp.position?.baseSalary || 0;
+
+    // Get attendance records for the month/year
+    const startOfMonth = new Date(year, month - 1, 1);
+    const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
+
+    const attendanceRecords = await Attendance.find({
+      employee: employee,
+      date: { $gte: startOfMonth, $lte: endOfMonth },
+      status: { $in: ['Có mặt', 'Đi muộn', 'Về sớm', 'Công tác', 'Làm việc từ xa'] }
+    });
+
+    const workingDays = attendanceRecords.length;
+
+    // Calculate base salary: (position salary / 22) * actual working days
+    const dailyRate = positionSalary / 22;
+    const calculatedBaseSalary = Math.round(dailyRate * workingDays);
+
+    res.json({
+      success: true,
+      positionSalary,
+      workingDays,
+      calculatedBaseSalary,
+      dailyRate: Math.round(dailyRate),
+      positionName: emp.position?.name || 'N/A'
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 // @route   GET /api/salaries
 // @desc    Get all salary records
@@ -95,7 +146,7 @@ router.get('/:id', protect, async (req, res) => {
     }
 
     // Check permission
-    if (req.user.role !== 'admin' && 
+    if (req.user.role !== 'admin' &&
       salary.employee._id.toString() !== req.user.employee?.toString()) {
       return res.status(403).json({ message: 'Không có quyền truy cập' });
     }
@@ -216,15 +267,25 @@ router.put('/:id/pay', protect, authorize('admin'), async (req, res) => {
 // @access  Private/Admin/HR
 router.put('/:id', protect, authorize('admin'), async (req, res) => {
   try {
+    // Check if salary exists and is not paid
+    const existingSalary = await Salary.findById(req.params.id);
+
+    if (!existingSalary) {
+      return res.status(404).json({ message: 'Không tìm thấy bảng lương' });
+    }
+
+    // Prevent updating paid salaries
+    if (existingSalary.status === 'Đã thanh toán') {
+      return res.status(403).json({
+        message: 'Không thể sửa bảng lương đã thanh toán. Bảng lương đã bị khóa.'
+      });
+    }
+
     const salary = await Salary.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
-
-    if (!salary) {
-      return res.status(404).json({ message: 'Không tìm thấy bảng lương' });
-    }
 
     res.json({ success: true, salary });
   } catch (error) {
@@ -237,11 +298,21 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
 // @access  Private/Admin
 router.delete('/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const salary = await Salary.findByIdAndDelete(req.params.id);
+    // Check if salary exists and is not paid
+    const salary = await Salary.findById(req.params.id);
 
     if (!salary) {
       return res.status(404).json({ message: 'Không tìm thấy bảng lương' });
     }
+
+    // Prevent deleting paid salaries
+    if (salary.status === 'Đã thanh toán') {
+      return res.status(403).json({
+        message: 'Không thể xóa bảng lương đã thanh toán. Bảng lương đã bị khóa.'
+      });
+    }
+
+    await salary.deleteOne();
 
     res.json({ success: true, message: 'Đã xóa bảng lương' });
   } catch (error) {

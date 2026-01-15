@@ -353,15 +353,18 @@ router.put('/check-out/:id', protect, authorize('admin'), async (req, res) => {
 // @access  Private/Admin/HR
 router.put('/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const attendance = await Attendance.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body, approvedBy: req.user.id },
-      { new: true, runValidators: true }
-    );
+    const attendance = await Attendance.findById(req.params.id);
 
     if (!attendance) {
       return res.status(404).json({ message: 'Không tìm thấy bản ghi' });
     }
+
+    // Update fields
+    Object.assign(attendance, req.body);
+    attendance.approvedBy = req.user.id;
+
+    // Save to trigger pre-save hook (recalculates workHours)
+    await attendance.save();
 
     res.json({ success: true, attendance });
   } catch (error) {

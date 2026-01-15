@@ -54,7 +54,10 @@ const AttendanceForm = () => {
         await api.post('/attendance', data);
         toast.success('Thêm chấm công thành công');
       }
-      navigate('/attendance');
+      // Force refresh by using replace and adding timestamp
+      setTimeout(() => {
+        window.location.replace('/attendance?_=' + Date.now());
+      }, 500);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Có lỗi xảy ra');
     } finally {
@@ -95,28 +98,28 @@ const AttendanceForm = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Giờ vào</label>
-            <input 
-              type="time" 
-              {...register('checkIn')} 
+            <input
+              type="time"
+              {...register('checkIn')}
               disabled={isViewOnly}
               step="60"
               placeholder="HH:MM"
               pattern="[0-9]{2}:[0-9]{2}"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500" 
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
             />
             {!isViewOnly && <p className="mt-1 text-xs text-gray-500">Định dạng 24h (VD: 08:00, 15:30)</p>}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Giờ ra</label>
-            <input 
-              type="time" 
-              {...register('checkOut')} 
+            <input
+              type="time"
+              {...register('checkOut')}
               disabled={isViewOnly}
               step="60"
               placeholder="HH:MM"
               pattern="[0-9]{2}:[0-9]{2}"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500" 
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
             />
             {!isViewOnly && <p className="mt-1 text-xs text-gray-500">Định dạng 24h (VD: 17:00, 23:30)</p>}
           </div>

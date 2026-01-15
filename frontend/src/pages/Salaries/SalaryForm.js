@@ -24,15 +24,24 @@ const SalaryForm = () => {
   });
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState([]);
-  
+  const [salaryInfo, setSalaryInfo] = useState({
+    positionSalary: 0,
+    positionName: '',
+    dailyRate: 0,
+    isLoading: false
+  });
+
   // Watch các trường để tự động tính toán
+  const selectedEmployee = watch('employee');
+  const selectedMonth = watch('month');
+  const selectedYear = watch('year');
   const baseSalary = watch('baseSalary');
   const pcAnTrua = watch('pcAnTrua');
   const pcDiLai = watch('pcDiLai');
   const pcDienThoai = watch('pcDienThoai');
   const bonus = watch('bonus');
   const tax = watch('tax');
-  
+
   // Tính toán các giá trị
   const calculations = calculateFullSalary({
     baseSalary,
@@ -49,6 +58,43 @@ const SalaryForm = () => {
       fetchSalary();
     }
   }, [id]);
+
+  // Auto-fetch working days and position salary when employee + month + year selected
+  useEffect(() => {
+    const fetchCalculationInfo = async () => {
+      if (!selectedEmployee || !selectedMonth || !selectedYear || isViewOnly || isEdit) {
+        return;
+      }
+
+      setSalaryInfo(prev => ({ ...prev, isLoading: true }));
+      try {
+        const response = await api.get('/salaries/calculate-info', {
+          params: {
+            employee: selectedEmployee,
+            month: selectedMonth,
+            year: selectedYear
+          }
+        });
+
+        const data = response.data;
+        setSalaryInfo({
+          positionSalary: data.positionSalary,
+          positionName: data.positionName,
+          dailyRate: data.dailyRate,
+          isLoading: false
+        });
+
+        // Auto-fill workingDays and baseSalary
+        setValue('workingDays', data.workingDays);
+        setValue('baseSalary', data.calculatedBaseSalary);
+      } catch (error) {
+        console.error('Error fetching calculation info:', error);
+        setSalaryInfo(prev => ({ ...prev, isLoading: false }));
+      }
+    };
+
+    fetchCalculationInfo();
+  }, [selectedEmployee, selectedMonth, selectedYear, isViewOnly, isEdit, setValue]);
 
   const fetchSalary = async () => {
     try {
@@ -91,7 +137,7 @@ const SalaryForm = () => {
             year: data.year
           }
         });
-        
+
         if (checkResponse.data.exists) {
           toast.error('Bảng lương cho nhân viên này trong tháng/năm đã tồn tại!');
           return;
@@ -101,7 +147,7 @@ const SalaryForm = () => {
         console.log('Check exist API not available');
       }
     }
-    
+
     setLoading(true);
     try {
       // Chuẩn bị payload gửi lên API
@@ -127,7 +173,7 @@ const SalaryForm = () => {
         workingDays: parseFloat(data.workingDays) || 22,
         actualWorkingDays: parseFloat(data.workingDays) || 22
       };
-      
+
       if (isEdit) {
         await api.put(`/salaries/${id}`, payload);
         toast.success('Cập nhật bảng lương thành công');
@@ -173,42 +219,60 @@ const SalaryForm = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Tháng *</label>
-              <input 
-                type="number" 
-                min="1" 
-                max="12" 
-                {...register('month', { required: !isViewOnly, min: 1, max: 12 })} 
+              <input
+                type="number"
+                min="1"
+                max="12"
+                {...register('month', { required: !isViewOnly, min: 1, max: 12 })}
                 disabled={isViewOnly}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100"
               />
               {errors.month && <span className="text-red-500 text-sm">Vui lòng nhập tháng (1-12)</span>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Năm *</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 min="2020"
-                {...register('year', { required: !isViewOnly })} 
+                {...register('year', { required: !isViewOnly })}
                 disabled={isViewOnly}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100"
               />
               {errors.year && <span className="text-red-500 text-sm">Vui lòng nhập năm</span>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Số ngày công *</label>
-              <input 
-                type="number" 
-                min="0" 
+              <input
+                type="number"
+                min="0"
                 max="31"
-                {...register('workingDays', { required: !isViewOnly })} 
+                {...register('workingDays', { required: !isViewOnly })}
                 disabled={isViewOnly}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100"
               />
               {errors.workingDays && <span className="text-red-500 text-sm">Vui lòng nhập số ngày công</span>}
+              <span className="text-xs text-gray-500">Tự động lấy từ chấm công</span>
             </div>
           </div>
+
+          {/* Thông tin mức lương chức vụ */}
+          {!isViewOnly && !isEdit && salaryInfo.positionSalary > 0 && (
+            <div className="mt-4 bg-blue-50 p-4 rounded-md">
+              <div className="text-sm text-gray-700">
+                <strong>Chức vụ:</strong> {salaryInfo.positionName} |
+                <strong> Mức lương:</strong> {salaryInfo.positionSalary.toLocaleString('vi-VN')} đ |
+                <strong> Lương/ngày:</strong> {salaryInfo.dailyRate.toLocaleString('vi-VN')} đ
+              </div>
+              <div className="text-xs text-blue-600 mt-1">
+                Lương cơ bản = (Mức lương chức vụ / 22 ngày) × Số ngày công thực tế
+              </div>
+            </div>
+          )}
+          {salaryInfo.isLoading && (
+            <div className="mt-4 text-sm text-gray-500">Đang tải thông tin...</div>
+          )}
         </div>
 
         {/* Phần 2: Thu nhập */}
@@ -217,57 +281,57 @@ const SalaryForm = () => {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700">Lương cơ bản *</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 min="0"
-                {...register('baseSalary', { required: !isViewOnly, min: 0 })} 
+                {...register('baseSalary', { required: !isViewOnly, min: 0 })}
                 disabled={isViewOnly}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100"
               />
               {errors.baseSalary && <span className="text-red-500 text-sm">Vui lòng nhập lương cơ bản</span>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">PC Ăn trưa</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 min="0"
-                {...register('pcAnTrua')} 
+                {...register('pcAnTrua')}
                 disabled={isViewOnly}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">PC Đi lại</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 min="0"
-                {...register('pcDiLai')} 
+                {...register('pcDiLai')}
                 disabled={isViewOnly}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">PC Điện thoại</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 min="0"
-                {...register('pcDienThoai')} 
+                {...register('pcDienThoai')}
                 disabled={isViewOnly}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Thưởng</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 min="0"
-                {...register('bonus')} 
+                {...register('bonus')}
                 disabled={isViewOnly}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100" 
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100"
               />
             </div>
 
@@ -286,21 +350,21 @@ const SalaryForm = () => {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700">BHXH (8%)</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={calculations.bhxh.toLocaleString('vi-VN')}
                 disabled
-                className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 text-gray-600 shadow-sm cursor-not-allowed" 
+                className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 text-gray-600 shadow-sm cursor-not-allowed"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">BHYT (1.5%)</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={calculations.bhyt.toLocaleString('vi-VN')}
                 disabled
-                className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 text-gray-600 shadow-sm cursor-not-allowed" 
+                className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 text-gray-600 shadow-sm cursor-not-allowed"
               />
             </div>
 
@@ -326,14 +390,13 @@ const SalaryForm = () => {
               <label className="block text-sm font-medium text-gray-700">
                 Thuế TNCN {calculations.mustPayTax && '(Nhập thủ công)'}
               </label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 min="0"
-                {...register('tax')} 
+                {...register('tax')}
                 disabled={!calculations.mustPayTax || isViewOnly}
-                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 ${
-                  !calculations.mustPayTax || isViewOnly ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                }`}
+                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 ${!calculations.mustPayTax || isViewOnly ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
+                  }`}
               />
               {!calculations.mustPayTax && (
                 <span className="text-xs text-gray-500">Tự động = 0 (do thu nhập thấp)</span>
@@ -367,9 +430,9 @@ const SalaryForm = () => {
             {isViewOnly ? 'Quay lại' : 'Hủy'}
           </Link>
           {!isViewOnly && (
-            <button 
-              type="submit" 
-              disabled={loading} 
+            <button
+              type="submit"
+              disabled={loading}
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50"
             >
               {loading ? 'Đang xử lý...' : isEdit ? 'Cập nhật' : 'Tạo bảng lương'}

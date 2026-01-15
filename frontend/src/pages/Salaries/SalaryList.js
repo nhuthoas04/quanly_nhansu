@@ -21,12 +21,12 @@ const SalaryList = () => {
       toast.error(error.response?.data?.message || 'Xóa bảng lương thất bại');
     }
   };
-  
+
   // Get current month and year
   const currentDate = new Date();
   const currentMonth = currentDate.getMonth() + 1;
   const currentYear = currentDate.getFullYear();
-  
+
   // Filters
   const [filterMonth, setFilterMonth] = useState(currentMonth);
   const [filterYear, setFilterYear] = useState(currentYear);
@@ -108,7 +108,7 @@ const SalaryList = () => {
             <option value="11">Tháng 11</option>
             <option value="12">Tháng 12</option>
           </select>
-          
+
           {/* Filter by Year */}
           <select
             value={filterYear}
@@ -119,7 +119,7 @@ const SalaryList = () => {
               <option key={year} value={year}>{year}</option>
             ))}
           </select>
-          
+
           {/* Filter by Status */}
           <select
             value={filterStatus}
@@ -166,8 +166,8 @@ const SalaryList = () => {
                     <select
                       value={salary.status}
                       onChange={(e) => handleStatusChange(salary._id, e.target.value)}
-                      disabled={updatingStatus === salary._id}
-                      className={`text-xs font-semibold rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-primary-500 ${getStatusColor(salary.status)} ${updatingStatus === salary._id ? 'opacity-50' : ''}`}
+                      disabled={updatingStatus === salary._id || salary.status === 'Đã thanh toán'}
+                      className={`text-xs font-semibold rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-primary-500 ${getStatusColor(salary.status)} ${(updatingStatus === salary._id || salary.status === 'Đã thanh toán') ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <option value="Chờ duyệt">Chờ duyệt</option>
                       <option value="Đã duyệt">Đã duyệt</option>
@@ -176,8 +176,15 @@ const SalaryList = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                     <Link to={`/salaries/${salary._id}`} className="text-blue-600 hover:text-blue-900">Xem</Link>
-                    <Link to={`/salaries/${salary._id}/edit`} className="text-indigo-600 hover:text-indigo-900">Sửa</Link>
-                    <button onClick={() => { setDeleteId(salary._id); setShowDeleteModal(true); }} className="text-red-600 hover:text-red-900">Xóa</button>
+                    {salary.status !== 'Đã thanh toán' && (
+                      <>
+                        <Link to={`/salaries/${salary._id}/edit`} className="text-indigo-600 hover:text-indigo-900">Sửa</Link>
+                        <button onClick={() => { setDeleteId(salary._id); setShowDeleteModal(true); }} className="text-red-600 hover:text-red-900">Xóa</button>
+                      </>
+                    )}
+                    {salary.status === 'Đã thanh toán' && (
+                      <span className="text-gray-400 text-xs italic">🔒 Đã khóa</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -185,6 +192,30 @@ const SalaryList = () => {
           </table>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Xác nhận xóa</h3>
+            <p className="text-gray-600 mb-6">Bạn có chắc chắn muốn xóa bảng lương này? Hành động này không thể hoàn tác.</p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleDeleteSalary}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

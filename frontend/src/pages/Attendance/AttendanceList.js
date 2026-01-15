@@ -9,6 +9,7 @@ const AttendanceList = () => {
   const { user } = useContext(AuthContext);
   const isAdmin = user?.role === 'admin';
   const [attendance, setAttendance] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -33,22 +34,47 @@ const AttendanceList = () => {
   const [filterMonth, setFilterMonth] = useState(currentMonth);
   const [filterYear, setFilterYear] = useState(currentYear);
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterEmployee, setFilterEmployee] = useState('');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 10;
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
 
   useEffect(() => {
     fetchAttendance();
-  }, [filterMonth, filterYear, filterStatus]);
+  }, [filterMonth, filterYear, filterStatus, filterEmployee, currentPage]);
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await api.get('/employees');
+      setEmployees(response.data.employees);
+    } catch (error) {
+      console.error('Không thể tải danh sách nhân viên');
+    }
+  };
 
   const fetchAttendance = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/attendance', {
-        params: {
-          month: filterMonth,
-          year: filterYear,
-          status: filterStatus
-        }
-      });
+      const params = {
+        month: filterMonth,
+        year: filterYear,
+        page: currentPage,
+        limit
+      };
+      if (filterStatus) params.status = filterStatus;
+      if (filterEmployee) params.employee = filterEmployee;
+
+      const response = await api.get('/attendance', { params });
       setAttendance(response.data.attendance);
+      setTotalPages(response.data.totalPages);
+      setTotal(response.data.total);
     } catch (error) {
       toast.error('Không thể tải danh sách chấm công');
     } finally {
@@ -67,6 +93,14 @@ const AttendanceList = () => {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
+  const formatWorkHours = (hours) => {
+    if (!hours || hours === 0) return '0h';
+    const h = Math.floor(Math.abs(hours));
+    const m = Math.round((Math.abs(hours) - h) * 60);
+    const sign = hours < 0 ? '-' : '';
+    return m > 0 ? `${sign}${h}h${m.toString().padStart(2, '0')}p` : `${sign}${h}h`;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -81,11 +115,11 @@ const AttendanceList = () => {
 
       {/* Filters */}
       <div className="bg-white shadow rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Filter by Month */}
           <select
             value={filterMonth}
-            onChange={(e) => setFilterMonth(e.target.value)}
+            onChange={(e) => { setFilterMonth(e.target.value); setCurrentPage(1); }}
             className="rounded-lg border-gray-300 focus:border-primary-500 focus:ring-primary-500"
           >
             <option value="1">Tháng 1</option>
@@ -105,7 +139,7 @@ const AttendanceList = () => {
           {/* Filter by Year */}
           <select
             value={filterYear}
-            onChange={(e) => setFilterYear(e.target.value)}
+            onChange={(e) => { setFilterYear(e.target.value); setCurrentPage(1); }}
             className="rounded-lg border-gray-300 focus:border-primary-500 focus:ring-primary-500"
           >
             {[2024, 2025, 2026, 2027].map(year => (
@@ -116,7 +150,7 @@ const AttendanceList = () => {
           {/* Filter by Status */}
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
             className="rounded-lg border-gray-300 focus:border-primary-500 focus:ring-primary-500"
           >
             <option value="">Tất cả trạng thái</option>
@@ -125,6 +159,18 @@ const AttendanceList = () => {
             <option value="Đi muộn">Đi muộn</option>
             <option value="Về sớm">Về sớm</option>
             <option value="Nghỉ phép">Nghỉ phép</option>
+          </select>
+
+          {/* Filter by Employee */}
+          <select
+            value={filterEmployee}
+            onChange={(e) => { setFilterEmployee(e.target.value); setCurrentPage(1); }}
+            className="rounded-lg border-gray-300 focus:border-primary-500 focus:ring-primary-500"
+          >
+            <option value="">Tất cả nhân viên</option>
+            {employees.map(emp => (
+              <option key={emp._id} value={emp._id}>{emp.fullName}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -154,7 +200,7 @@ const AttendanceList = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(item.date).toLocaleDateString('vi-VN')}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.checkIn || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.checkOut || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.workHours || 0}h</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatWorkHours(item.workHours)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(item.status)}`}>
                       {item.status}
@@ -175,6 +221,89 @@ const AttendanceList = () => {
           </table>
         )}
       </div>
+
+      {/* Pagination */}
+      {!loading && attendance.length > 0 && (
+        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-b-lg shadow">
+          <div className="flex-1 flex justify-between items-center sm:hidden">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Trước
+            </button>
+            <span className="text-sm text-gray-700">
+              Trang {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Sau
+            </button>
+          </div>
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Hiển thị <span className="font-medium">{(currentPage - 1) * limit + 1}</span> đến{' '}
+                <span className="font-medium">{Math.min(currentPage * limit, total)}</span> trong tổng{' '}
+                <span className="font-medium">{total}</span> kết quả
+              </p>
+            </div>
+            <div>
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="sr-only">Trước</span>
+                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                {[...Array(totalPages)].map((_, index) => {
+                  const pageNum = index + 1;
+                  // Show first page, last page, current page, and pages around current
+                  if (
+                    pageNum === 1 ||
+                    pageNum === totalPages ||
+                    (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                  ) {
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === pageNum
+                          ? 'z-10 bg-primary-50 border-primary-500 text-primary-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  } else if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
+                    return <span key={pageNum} className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>;
+                  }
+                  return null;
+                })}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="sr-only">Sau</span>
+                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
