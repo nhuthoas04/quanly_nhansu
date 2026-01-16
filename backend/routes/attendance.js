@@ -3,6 +3,25 @@ const router = express.Router();
 const Attendance = require('../models/Attendance');
 const { protect, authorize } = require('../middleware/auth');
 
+// Helper function to get Vietnam time (UTC+7)
+const getVietnamTime = () => {
+  const now = new Date();
+  // Convert to Vietnam timezone
+  const vietnamTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+  return vietnamTime;
+};
+
+// Get time string in HH:MM format for Vietnam timezone
+const getVietnamTimeString = () => {
+  const now = new Date();
+  return now.toLocaleTimeString('en-GB', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+};
+
 // @route   GET /api/attendance
 // @desc    Get all attendance records
 // @access  Private/Admin/HR/Manager
@@ -171,8 +190,8 @@ router.post('/self-check-in', protect, async (req, res) => {
       });
     }
 
-    // Get current time as HH:MM format
-    const checkInTime = now.toTimeString().slice(0, 5);
+    // Get current time as HH:MM format (Vietnam timezone)
+    const checkInTime = getVietnamTimeString();
 
     // Determine status based on check-in time
     let status = 'Có mặt';
@@ -230,8 +249,8 @@ router.post('/self-check-out', protect, async (req, res) => {
       });
     }
 
-    // Get current time as HH:MM format
-    const checkOutTime = now.toTimeString().slice(0, 5);
+    // Get current time as HH:MM format (Vietnam timezone)
+    const checkOutTime = getVietnamTimeString();
 
     // Update check-out
     attendance.checkOut = checkOutTime;

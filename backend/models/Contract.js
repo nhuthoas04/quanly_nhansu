@@ -39,4 +39,29 @@ const contractSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Virtual field to check if contract is expired
+contractSchema.virtual('isExpired').get(function () {
+  if (!this.endDate) return false;
+  return new Date(this.endDate) < new Date();
+});
+
+// Virtual field to check if contract is locked (cannot edit)
+contractSchema.virtual('isLocked').get(function () {
+  return this.status === 'Hiệu lực' || this.status === 'Hết hạn' || this.status === 'Đã hủy';
+});
+
+// Enable virtuals in JSON
+contractSchema.set('toJSON', { virtuals: true });
+contractSchema.set('toObject', { virtuals: true });
+
+// Auto-update status to "Hết hạn" if expired
+contractSchema.pre('save', function (next) {
+  if (this.endDate && new Date(this.endDate) < new Date()) {
+    if (this.status === 'Hiệu lực') {
+      this.status = 'Hết hạn';
+    }
+  }
+  next();
+});
+
 module.exports = mongoose.model('Contract', contractSchema);

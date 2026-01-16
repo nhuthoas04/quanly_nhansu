@@ -57,7 +57,8 @@ const ContractList = () => {
       toast.success('Cập nhật trạng thái thành công');
       fetchContracts();
     } catch (error) {
-      toast.error('Cập nhật trạng thái thất bại');
+      toast.error(error.response?.data?.message || 'Cập nhật trạng thái thất bại');
+      fetchContracts(); // Refresh to revert UI
     }
   };
 
@@ -69,6 +70,10 @@ const ContractList = () => {
       'Chờ ký': 'bg-yellow-100 text-yellow-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const isContractLocked = (contract) => {
+    return contract.status === 'Hiệu lực' || contract.status === 'Hết hạn' || contract.status === 'Đã hủy';
   };
 
   return (
@@ -148,17 +153,33 @@ const ContractList = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                     <Link to={`/contracts/${contract._id}`} className="text-blue-600 hover:text-blue-900">Xem</Link>
-                    <Link to={`/contracts/${contract._id}/edit`} className="text-indigo-600 hover:text-indigo-900">Sửa</Link>
+
+                    {/* Disable edit button for locked contracts */}
+                    {isContractLocked(contract) ? (
+                      <span className="text-gray-400 cursor-not-allowed" title="Không thể sửa hợp đồng đã khóa">
+                        Sửa
+                      </span>
+                    ) : (
+                      <Link to={`/contracts/${contract._id}/edit`} className="text-indigo-600 hover:text-indigo-900">Sửa</Link>
+                    )}
+
                     <button
                       onClick={() => handleDeleteClick(contract._id)}
                       className="text-red-600 hover:text-red-900"
                     >
                       Xóa
                     </button>
+
+                    {/* Disable status dropdown for locked contracts */}
                     <select
                       value={contract.status}
                       onChange={(e) => handleStatusChange(contract._id, e.target.value)}
-                      className="inline-flex text-xs px-2 py-1 border border-gray-300 rounded"
+                      disabled={isContractLocked(contract)}
+                      className={`inline-flex text-xs px-2 py-1 border rounded ${isContractLocked(contract)
+                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : 'border-gray-300'
+                        }`}
+                      title={isContractLocked(contract) ? 'Không thể thay đổi trạng thái hợp đồng đã khóa' : ''}
                     >
                       <option value="Chờ ký">Chờ ký</option>
                       <option value="Hiệu lực">Hiệu lực</option>

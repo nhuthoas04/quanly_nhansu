@@ -9,9 +9,9 @@ const { protect, authorize } = require('../middleware/auth');
 router.get('/', protect, authorize('admin', 'manager'), async (req, res) => {
   try {
     const { page = 1, limit = 10, employee, status, contractType } = req.query;
-    
+
     const query = {};
-    
+
     if (employee) query.employee = employee;
     if (status) query.status = status;
     if (contractType) query.contractType = contractType;
@@ -21,6 +21,15 @@ router.get('/', protect, authorize('admin', 'manager'), async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .sort({ createdAt: -1 });
+
+    // Auto-update expired contracts
+    const now = new Date();
+    for (const contract of contracts) {
+      if (contract.endDate && new Date(contract.endDate) < now && contract.status === 'Hiệu lực') {
+        contract.status = 'Hết hạn';
+        await contract.save();
+      }
+    }
 
     const count = await Contract.countDocuments(query);
 
@@ -62,18 +71,18 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
     // Auto-generate contract number (HD001, HD002, HD003...)
     const lastContract = await Contract.findOne().sort({ contractNumber: -1 });
     let newContractNumber = 'HD001';
-    
+
     if (lastContract && lastContract.contractNumber) {
       const lastNumber = parseInt(lastContract.contractNumber.substring(2));
       const newNumber = lastNumber + 1;
       newContractNumber = 'HD' + String(newNumber).padStart(3, '0');
     }
-    
+
     const contract = await Contract.create({
       ...req.body,
       contractNumber: newContractNumber
     });
-    
+
     res.status(201).json({ success: true, contract });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -108,15 +117,22 @@ router.put('/:id/sign', protect, authorize('admin'), async (req, res) => {
 // @access  Private/Admin/HR
 router.put('/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const contract = await Contract.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const contract = await Contract.findById(req.params.id);
 
     if (!contract) {
       return res.status(404).json({ message: 'Không tìm thấy hợp đồng' });
     }
+
+    // Check if contract is locked (cannot edit once activated)
+    if (contract.status === 'Hiệu lực' || contract.status === 'Hết hạn' || contract.status === 'Đã hủy') {
+      return res.status(403).json({
+        message: 'Không thể sửa hợp đồng đã kích hoạt hoặc đã khóa'
+      });
+    }
+
+    // Update contract
+    Object.assign(contract, req.body);
+    await contract.save();
 
     res.json({ success: true, contract });
   } catch (error) {
@@ -134,6 +150,13 @@ router.patch('/:id/status', protect, authorize('admin'), async (req, res) => {
 
     if (!contract) {
       return res.status(404).json({ message: 'Không tìm thấy hợp đồng' });
+    }
+
+    // Prevent changing status from locked states (including active contracts)
+    if (contract.status === 'Hiệu lực' || contract.status === 'Hết hạn' || contract.status === 'Đã hủy') {
+      return res.status(403).json({
+        message: 'Không thể thay đổi trạng thái hợp đồng đã kích hoạt hoặc đã khóa'
+      });
     }
 
     contract.status = status;
